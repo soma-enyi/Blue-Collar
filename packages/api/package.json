@@ -18,7 +18,9 @@
     "admin:create": "tsx src/commands/create-admin.ts",
     "db:reset": "tsx src/commands/reset-db.ts",
     "lint": "eslint \"src/**/*.ts\"",
-    "format": "prettier --write \"src/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\"",
+    "test:mutation": "stryker run",
+    "test:mutation:ci": "stryker run --reporters json,clear-text"
   },
   "prisma": {
     "seed": "tsx src/database/seed.ts"
@@ -83,5 +85,8 @@
     "tsx": "^4.7.0",
     "typescript": "^5.4.0",
     "vitest": "^1.4.0"
+  }
+    "@stryker-mutator/core": "^8.2.6",
+    "@stryker-mutator/vitest-runner": "^8.2.6"
   }
 }
