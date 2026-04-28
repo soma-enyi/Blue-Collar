@@ -10,6 +10,7 @@
     "build": "tsc",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:perf": "vitest run src/__tests__/performance",
     "migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "seed": "tsx src/database/seed.ts",
