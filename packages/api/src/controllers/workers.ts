@@ -40,15 +40,18 @@ export async function listWorkers(req: Request, res: Response) {
     const workers = await db.worker.findMany({
       where: {
         isActive: true,
-        latitude: { gte: userLat - delta, lte: userLat + delta },
-        longitude: { gte: userLng - delta, lte: userLng + delta },
+        location: {
+          lat: { gte: userLat - delta, lte: userLat + delta },
+          lng: { gte: userLng - delta, lte: userLng + delta },
+        },
         ...(category ? { categoryId: String(category) } : {}),
       },
-      include: { category: true },
+      include: { category: true, location: true },
     })
 
     const withDistance = workers
-      .map(w => ({ ...w, distanceKm: haversine(userLat, userLng, w.latitude!, w.longitude!) }))
+      .filter(w => w.location?.lat != null && w.location?.lng != null)
+      .map(w => ({ ...w, distanceKm: haversine(userLat, userLng, w.location!.lat!, w.location!.lng!) }))
       .filter(w => w.distanceKm <= radiusKm)
       .sort((a, b) => a.distanceKm - b.distanceKm)
 
