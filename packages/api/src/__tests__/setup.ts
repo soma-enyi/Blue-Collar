@@ -8,45 +8,49 @@ process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://localhost:5
 process.env.REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379/1';
 process.env.APP_URL = 'http://localhost:3000';
 
-const prisma = new PrismaClient();
+// Prisma is only used for integration/e2e tests that have a real DB.
+// Unit tests mock the DB, so we create the client lazily and swallow
+// connection errors so the suite doesn't crash in environments without a DB.
+let prisma: PrismaClient;
+try {
+  prisma = new PrismaClient();
+} catch {
+  prisma = null as unknown as PrismaClient;
+}
 
 beforeAll(async () => {
-  // Connect to test database
-  await prisma.$connect();
-  console.log('Test database connected');
+  if (!prisma) return;
+  try {
+    await prisma.$connect();
+    console.log('Test database connected');
+  } catch {
+    // No DB available — unit tests that mock the DB will still run fine
+  }
 });
 
 afterAll(async () => {
-  // Disconnect from test database
-  await prisma.$disconnect();
-  console.log('Test database disconnected');
+  if (!prisma) return;
+  try {
+    await prisma.$disconnect();
+  } catch {
+    // ignore
+  }
 });
 
 beforeEach(async () => {
-  // Clear all tables before each test
-  const tables = [
-    'Review',
-    'Message',
-    'Notification',
-    'Job',
-    'Worker',
-    'Location',
-    'User',
-  ];
-
+  if (!prisma) return;
+  const tables = ['Review', 'Message', 'Notification', 'Job', 'Worker', 'Location', 'User'];
   for (const table of tables) {
     try {
       await prisma.$executeRawUnsafe(`TRUNCATE TABLE "${table}" CASCADE;`);
-    } catch (error) {
+    } catch {
       // Table might not exist, ignore
     }
   }
 });
 
 afterEach(() => {
-  // Clear all mocks after each test
   vi.clearAllMocks();
 });
 
-// Export prisma instance for tests
 export { prisma };

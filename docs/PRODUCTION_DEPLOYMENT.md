@@ -93,6 +93,64 @@ Use a production-safe connection string in `DATABASE_URL`:
 DATABASE_URL=postgresql://bluecollar_app:<password>@db-host:5432/bluecollar?sslmode=require
 ```
 
+## 2.4 PgBouncer Connection Pooling
+
+In production, route all API connections through PgBouncer to cap the number of real PostgreSQL connections and handle high concurrency efficiently.
+
+**Why PgBouncer?**
+- PostgreSQL forks a process per connection — without pooling, a spike in API instances exhausts `max_connections` quickly.
+- PgBouncer in **transaction mode** multiplexes many short-lived application connections onto a small pool of real server connections.
+- Prisma is compatible with transaction mode when `?pgbouncer=true&connection_limit=1` is appended to `DATABASE_URL`.
+
+**Docker Compose setup** (already included in `docker-compose.yml`):
+
+```yaml
+pgbouncer:
+  image: bitnami/pgbouncer:1.22.1
+  environment:
+    POSTGRESQL_HOST: db
+    POSTGRESQL_PORT: 5432
+    POSTGRESQL_USERNAME: bluecollar
+    POSTGRESQL_PASSWORD: <password>
+    POSTGRESQL_DATABASE: bluecollar
+    PGBOUNCER_DATABASE: bluecollar
+    PGBOUNCER_POOL_MODE: transaction
+    PGBOUNCER_MAX_CLIENT_CONN: 1000
+    PGBOUNCER_DEFAULT_POOL_SIZE: 25
+    PGBOUNCER_MIN_POOL_SIZE: 5
+    PGBOUNCER_RESERVE_POOL_SIZE: 5
+    PGBOUNCER_IGNORE_STARTUP_PARAMETERS: extra_float_digits
+  ports:
+    - "5433:5432"
+```
+
+**DATABASE_URL for Prisma via PgBouncer:**
+
+```env
+DATABASE_URL=postgresql://bluecollar_app:<password>@pgbouncer:5432/bluecollar?pgbouncer=true&connection_limit=1&sslmode=require
+```
+
+Key parameters:
+- `pgbouncer=true` — disables Prisma's prepared-statement cache (not supported in transaction mode).
+- `connection_limit=1` — each API process holds at most one server connection; PgBouncer handles the rest.
+
+**Recommended pool sizing:**
+
+| Parameter | Value | Notes |
+|---|---|---|
+| `PGBOUNCER_MAX_CLIENT_CONN` | 1000 | Max simultaneous app connections |
+| `PGBOUNCER_DEFAULT_POOL_SIZE` | 25 | Real PostgreSQL connections per database/user pair |
+| `PGBOUNCER_RESERVE_POOL_SIZE` | 5 | Extra connections for bursts |
+
+Tune `DEFAULT_POOL_SIZE` to stay well below PostgreSQL's `max_connections` (default 100). A safe rule: `pool_size × number_of_api_replicas < max_connections × 0.8`.
+
+**Prisma migration note:** Run migrations directly against PostgreSQL (port 5432), not through PgBouncer, because `prisma migrate deploy` uses DDL statements that require session mode:
+
+```bash
+# Run migrations directly against Postgres, not PgBouncer
+DATABASE_URL=postgresql://bluecollar_app:<password>@db:5432/bluecollar npx prisma migrate deploy
+```
+
 ## 3. Docker Production Configuration
 
 A production-ready example compose file is provided at `docker-compose.prod.example.yml`.

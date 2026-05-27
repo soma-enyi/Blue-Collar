@@ -46,6 +46,7 @@ model User {
   location                Location? @relation(fields: [locationId], references: [id])
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
+  deletedAt               DateTime?
   workers                 Worker[]
   reviews                 Review[]             @relation("ReviewUser")
   authoredReviews         Review[]             @relation("ReviewAuthor")
@@ -96,6 +97,7 @@ model Worker {
   location            Location?       @relation(fields: [locationId], references: [id])
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
+  deletedAt           DateTime?
   bookmarks           Bookmark[]
   reviews             Review[]
   availability        Availability[]

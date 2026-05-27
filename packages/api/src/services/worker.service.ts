@@ -66,6 +66,7 @@ export async function listWorkers(opts: {
 
   const where: any = {
     isActive: true,
+    deletedAt: null,
     ...categoryFilter,
     ...(isVerified !== undefined ? { isVerified } : {}),
     ...(city || state || country
@@ -211,6 +212,7 @@ async function listWorkersFullText(opts: FtsOpts) {
     'LEFT JOIN "User"     u   ON u.id   = w."curatorId"',
     'LEFT JOIN "Location" loc ON loc.id = w."locationId"',
     'WHERE w."isActive" = true',
+    '  AND w."deletedAt" IS NULL',
     '  AND w."searchVector" @@ ' + tsq,
     '  ' + dataWhere,
     'ORDER BY rank DESC',
@@ -223,6 +225,7 @@ async function listWorkersFullText(opts: FtsOpts) {
     'FROM "Worker" w',
     'LEFT JOIN "Location" loc ON loc.id = w."locationId"',
     'WHERE w."isActive" = true',
+    '  AND w."deletedAt" IS NULL',
     '  AND w."searchVector" @@ ' + tsqCount,
     '  ' + countWhere,
   ].join('\n')
@@ -254,7 +257,7 @@ async function listWorkersFullText(opts: FtsOpts) {
 // ── CRUD helpers ──────────────────────────────────────────────────────────────
 
 export async function getWorker(id: string) {
-  const worker = await db.worker.findUnique({ where: { id }, include: workerInclude })
+  const worker = await db.worker.findUnique({ where: { id, deletedAt: null }, include: workerInclude })
   if (!worker) throw new AppError('Not found', 404)
   return formatWorker(worker)
 }
@@ -274,9 +277,17 @@ export async function updateWorker(id: string, data: UpdateWorkerBody) {
 }
 
 export async function deleteWorker(id: string) {
-  await db.worker.delete({ where: { id } })
+  await db.worker.update({ where: { id }, data: { deletedAt: new Date() } })
   publishEvent('worker.deleted', { workerId: id }).catch(() => {})
   appEvents.emit('worker.deleted', { workerId: id })
+}
+
+export async function restoreWorker(id: string) {
+  const worker = await db.worker.findUnique({ where: { id } })
+  if (!worker) throw new AppError('Not found', 404)
+  if (!worker.deletedAt) throw new AppError('Worker is not deleted', 400)
+  const restored = await db.worker.update({ where: { id }, data: { deletedAt: null }, include: workerInclude })
+  return formatWorker(restored)
 }
 
 export async function toggleWorker(id: string) {

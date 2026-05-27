@@ -1,48 +1,51 @@
-import { NodeSDK } from '@opentelemetry/sdk-node';
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-import { JaegerExporter } from '@opentelemetry/exporter-jaeger';
-import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
-import { Resource } from '@opentelemetry/resources';
-import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
+/**
+ * OpenTelemetry tracing — OTLP exporter.
+ *
+ * Exports traces to an OTLP-compatible backend (Jaeger, Grafana Tempo, etc.)
+ * via the endpoint configured in OTEL_EXPORTER_OTLP_ENDPOINT.
+ *
+ * Auto-instruments Express, Prisma (via @prisma/instrumentation), and HTTP.
+ * Must be imported before any other module in the entry point.
+ */
+import { NodeSDK } from '@opentelemetry/sdk-node'
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
+import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
+import { Resource } from '@opentelemetry/resources'
+import { SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_SERVICE_VERSION } from '@opentelemetry/semantic-conventions'
+import { trace, context } from '@opentelemetry/api'
 
-const jaegerExporter = new JaegerExporter({
-  endpoint: process.env.JAEGER_ENDPOINT || 'http://localhost:14268/api/traces',
-});
-
-const prometheusExporter = new PrometheusExporter(
-  {
-    port: Number(process.env.PROMETHEUS_PORT) || 9464,
-  },
-  () => {
-    console.log('Prometheus scrape endpoint: http://localhost:9464/metrics');
-  }
-);
+const exporter = new OTLPTraceExporter({
+  url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'http://otel-collector:4318/v1/traces',
+})
 
 export const sdk = new NodeSDK({
   resource: new Resource({
-    [SemanticResourceAttributes.SERVICE_NAME]: 'bluecollar-api',
-    [SemanticResourceAttributes.SERVICE_VERSION]: process.env.npm_package_version || '1.0.0',
+    [SEMRESATTRS_SERVICE_NAME]: 'bluecollar-api',
+    [SEMRESATTRS_SERVICE_VERSION]: process.env.npm_package_version ?? '1.0.0',
   }),
-  traceExporter: jaegerExporter,
-  metricReader: prometheusExporter,
+  traceExporter: exporter,
   instrumentations: [
     getNodeAutoInstrumentations({
-      '@opentelemetry/instrumentation-fs': {
-        enabled: false, // Disable file system instrumentation to reduce noise
-      },
+      '@opentelemetry/instrumentation-fs': { enabled: false },
     }),
   ],
-});
+})
 
-export function initializeTracing() {
-  sdk.start();
-  console.log('Tracing initialized');
+export function initializeTracing(): void {
+  sdk.start()
 
   process.on('SIGTERM', () => {
-    sdk
-      .shutdown()
-      .then(() => console.log('Tracing terminated'))
-      .catch((error) => console.log('Error terminating tracing', error))
-      .finally(() => process.exit(0));
-  });
+    sdk.shutdown()
+      .then(() => {})
+      .catch(() => {})
+      .finally(() => process.exit(0))
+  })
+}
+
+/** Returns the current trace ID, or undefined when no active span exists. */
+export function getTraceId(): string | undefined {
+  const span = trace.getActiveSpan()
+  if (!span) return undefined
+  const traceId = span.spanContext().traceId
+  return traceId === '00000000000000000000000000000000' ? undefined : traceId
 }

@@ -1,4 +1,8 @@
 // Entry point for BlueCollar API
+// Tracing must be initialised before any other imports so auto-instrumentation patches load first
+import { initializeTracing } from './monitoring/tracing.js'
+initializeTracing()
+
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
@@ -14,6 +18,7 @@ import portfolioRoutes from './routes/portfolio.js'
 import reviewRoutes from './routes/reviews.js'
 import subscriptionRoutes from './routes/subscriptions.js'
 import { startReminderScheduler } from './services/reminder.service.js'
+import { startPurgeScheduler } from './services/purge.service.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { logger } from './config/logger.js'
 
@@ -64,6 +69,7 @@ if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
     logger.info(`BlueCollar API running on port ${PORT}`)
     startReminderScheduler()
+    startPurgeScheduler()
   })
 }
 

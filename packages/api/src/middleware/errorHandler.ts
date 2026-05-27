@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express'
 import { AppError, ErrorCode } from '../utils/AppError.js'
 import { logger } from '../config/logger.js'
+import { getTraceId } from '../monitoring/tracing.js'
 
 /**
  * Global error handling middleware for Express.
@@ -17,6 +18,16 @@ export function errorHandler(
   res: Response,
   _next: NextFunction,
 ) {
+  // ── CORS rejection ────────────────────────────────────────────────────────
+  if (err instanceof Error && err.message.startsWith('CORS:')) {
+    return res.status(403).json({
+      status: 'error',
+      message: 'Forbidden: origin not allowed',
+      code: 403,
+      errorCode: ErrorCode.FORBIDDEN,
+    })
+  }
+
   // ── Prisma error mapping ──────────────────────────────────────────────────
   if (isPrismaError(err)) {
     const mapped = mapPrismaError(err)
@@ -25,6 +36,7 @@ export function errorHandler(
       message: mapped.message,
       code: mapped.statusCode,
       errorCode: mapped.errorCode,
+      traceId: getTraceId(),
     })
   }
 
@@ -38,6 +50,7 @@ export function errorHandler(
       message: err.message,
       code: err.statusCode,
       errorCode: err.errorCode,
+      traceId: getTraceId(),
     })
   }
 
@@ -50,6 +63,7 @@ export function errorHandler(
     message: 'Internal Server Error',
     code: 500,
     errorCode: ErrorCode.INTERNAL_ERROR,
+    traceId: getTraceId(),
     ...(process.env.NODE_ENV === 'development' && {
       stack: error.stack,
       originalMessage: error.message,

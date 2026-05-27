@@ -11,17 +11,39 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
 
+  pgbouncer:
+    image: bitnami/pgbouncer:1.22.1
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRESQL_HOST: db
+      POSTGRESQL_PORT: 5432
+      POSTGRESQL_USERNAME: bluecollar
+      POSTGRESQL_PASSWORD: bluecollar
+      POSTGRESQL_DATABASE: bluecollar
+      PGBOUNCER_DATABASE: bluecollar
+      PGBOUNCER_POOL_MODE: transaction
+      PGBOUNCER_MAX_CLIENT_CONN: 1000
+      PGBOUNCER_DEFAULT_POOL_SIZE: 25
+      PGBOUNCER_MIN_POOL_SIZE: 5
+      PGBOUNCER_RESERVE_POOL_SIZE: 5
+      PGBOUNCER_IGNORE_STARTUP_PARAMETERS: extra_float_digits
+
   api:
     build:
       context: .
       dockerfile: packages/api/Dockerfile
     restart: unless-stopped
     depends_on:
-      - db
+      - pgbouncer
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://bluecollar:bluecollar@db:5432/bluecollar
+      # Route through PgBouncer (transaction mode — compatible with Prisma)
+      DATABASE_URL: postgresql://bluecollar:bluecollar@pgbouncer:5432/bluecollar?pgbouncer=true&connection_limit=1
       NODE_ENV: production
     env_file:
       - packages/api/.env
@@ -33,6 +55,17 @@ services:
       - db
     ports:
       - "8080:8080"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.96.0
+    restart: unless-stopped
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./deploy/otel/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8888:8888"   # Collector metrics
 
 volumes:
   db_data:
