@@ -54,7 +54,7 @@ export default async function WorkersPage({ searchParams }: PageProps) {
   if (searchParams.available) params.available = searchParams.available
   if (searchParams.listedSince) params.listedSince = searchParams.listedSince
 
-  const [{ data: workers, meta }, categories] = await Promise.all([
+  const [{ data: workers }, categories] = await Promise.all([
     fetchWorkers(params),
     fetchCategories(),
   ]);
@@ -177,13 +177,10 @@ export default async function WorkersPage({ searchParams }: PageProps) {
         </aside>
 
           {/* Results */}
-          <div className="flex-1">
-            <WorkerInfiniteList
-              initialWorkers={workers}
-              initialMeta={meta}
-              params={params}
-            />
-          </div>
+          <WorkersViewToggle
+            workers={workers}
+            hasFilters={Object.keys(params).some((k) => k !== "page" && k !== "limit" && params[k])}
+          />
       </div>
     </div>
   );
