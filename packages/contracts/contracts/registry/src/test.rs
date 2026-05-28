@@ -478,9 +478,123 @@ fn test_paginated_single_item_pages() {
     }
     let client = RegistryContractClient::new(&env, &contract);
 
-    for (i, expected) in ["w1", "w2", "w3"].iter().enumerate() {
-        let page = client.list_workers_paginated(&(i as u32), &1);
-        assert_eq!(page.len(), 1);
-        assert_eq!(page.get(0).unwrap(), Symbol::new(&env, expected));
-    }
-}
+     for (i, expected) in ["w1", "w2", "w3"].iter().enumerate() {
+         let page = client.list_workers_paginated(&(i as u32), &1);
+         assert_eq!(page.len(), 1);
+         assert_eq!(page.get(0).unwrap(), Symbol::new(&env, expected));
+     }
+ }
+
+ // ---------------------------------------------------------------------------
+ // Pause mechanism tests
+ // ---------------------------------------------------------------------------
+
+ #[test]
+ fn test_pause_and_unpause_events() {
+     let (env, contract) = setup();
+     let admin = Address::generate(&env);
+     let client = RegistryContractClient::new(&env, &contract);
+
+     // Initialize with admin
+     client.initialize(&admin);
+
+     // Test pause event emission
+     let paused_event = Symbol::new(&env, "ContractPaused");
+     client.pause(&admin);
+     assert_eq!(client.get_events(&paused_event).len(), 1);
+
+     // Test unpause event emission
+     let unpaused_event = Symbol::new(&env, "ContractUnpaused");
+     client.unpause(&admin);
+     assert_eq!(client.get_events(&unpaused_event).len(), 1);
+ }
+
+ #[test]
+ fn test_register_reverts_when_paused() {
+     let (env, contract) = setup();
+     let admin = Address::generate(&env);
+     let curator = Address::generate(&env);
+     let owner = Address::generate(&env);
+     let mut client = RegistryContractClient::new(&env, &contract);
+
+     // Initialize and set up curator
+     client.initialize(&admin);
+     client.grant_role(&admin, &Symbol::new(&env, ROLE_PAUSER), &admin); // admin can pause
+     client.grant_role(&admin, &Symbol::new(&env, ROLE_CURATOR_MGR), &admin); // admin can manage curators
+     client.grant_role(&admin, &Symbol::new(&env, "curator"), &curator); // make curator a curator
+
+     // Pause the contract
+     client.pause(&admin);
+
+     // Register should revert when paused
+     assert_panic_with_msg(
+         &move || {
+             client.register(
+                 &Symbol::new(&env, "w1"),
+                 &owner,
+                 &String::from_str(&env, "Alice"),
+                 &Symbol::new(&env, "plumber"),
+             );
+         },
+         "Contract is paused",
+     );
+ }
+
+ #[test]
+ fn test_toggle_reverts_when_paused() {
+     let (env, contract) = setup();
+     let admin = Address::generate(&env);
+     let owner = Address::generate(&env);
+     let mut client = RegistryContractClient::new(&env, &contract);
+
+     // Initialize and set up roles
+     client.initialize(&admin);
+     client.grant_role(&admin, &Symbol::new(&env, ROLE_PAUSER), &admin);
+     client.grant_role(&admin, &Symbol::new(&env, ROLE_CURATOR_MGR), &admin);
+
+     // Register a worker first
+     client.register(
+         &Symbol::new(&env, "w1"),
+         &owner,
+         &String::from_str(&env, "Alice"),
+         &Symbol::new(&env, "plumber"),
+     );
+
+     // Pause the contract
+     client.pause(&admin);
+
+     // Toggle should revert when paused
+     assert_panic_with_msg(
+         &move || {
+             client.toggle(&Symbol::new(&env, "w1"), &owner);
+         },
+         "Contract is paused",
+     );
+ }
+
+ // Helper macro to check for panics with specific message
+ macro_rules! assert_panic_with_msg {
+     ($f:expr, $msg:expr) => {
+         let result = std::panic::catch_unwind(|| $f);
+         assert!(result.is_err(), "Expected panic but none occurred");
+         if let Err(payload) = result {
+             if let Some(s) = payload.downcast_ref::<&str>() {
+                 assert!(
+                     s.contains($msg),
+                     "Expected panic message containing '{}', got: '{}'",
+                     $msg,
+                     s
+                 );
+             } else if let Some(s) = payload.downcast_ref::<String>() {
+                 assert!(
+                     s.contains($msg),
+                     "Expected panic message containing '{}', got: '{}'",
+                     $msg,
+                     s
+                 );
+             } else {
+                 panic!("Unable to extract panic message");
+             }
+         }
+     };
+ }
