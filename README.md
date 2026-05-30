@@ -28,6 +28,7 @@ Many skilled workers lack a platform to help them get noticed. Meanwhile, countl
 - [Getting Started](#getting-started)
 - [Environment Variables](#environment-variables)
 - [Production Deployment](#production-deployment)
+- [Status Page](#status-page)
 - [Roadmap](#roadmap)
 - [Community](#community)
 - [Contributing](#contributing)
@@ -444,6 +445,15 @@ Use the production runbook in [docs/PRODUCTION_DEPLOYMENT.md](./docs/PRODUCTION_
 | 📋 Planned     | Mobile app (React Native)                           |
 
 ---
+
+## Status Page
+
+Check service health and uptime status at [status.bluecollar.app](https://status.bluecollar.app)
+
+We monitor critical endpoints every 60 seconds:
+- API health check (`/health`)
+- API readiness check (`/ready`)
+- Frontend application
 
 ## Community
 

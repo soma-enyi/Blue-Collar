@@ -2,6 +2,44 @@
 
 This guide covers production deployment for the API, frontend, PostgreSQL database, TLS, monitoring, logging, and disaster recovery.
 
+## GitOps with ArgoCD
+
+### Overview
+
+BlueCollar uses ArgoCD for GitOps-driven Kubernetes deployments. This ensures all infrastructure changes are version-controlled and reviewable through Git.
+
+### Installation
+
+```bash
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+```
+
+### Application Manifests
+
+ArgoCD Applications are configured in `deploy/argocd/`:
+
+- `application-api.yaml` - API deployment (auto-sync for staging, manual for prod)
+- `application-app.yaml` - Frontend deployment (auto-sync for staging, manual for prod)
+
+### Sync Policy
+
+- **Staging**: Auto-sync with self-healing enabled (deployments auto-update on git push)
+- **Production**: Manual sync required (maintainers approve before applying)
+
+### Workflow
+
+1. Commit changes to `deploy/k8s/`
+2. Push to main branch
+3. ArgoCD detects changes
+4. For staging: automatically syncs
+5. For production: review and manually sync via ArgoCD UI or CLI
+
+```bash
+# Manual sync for production
+argocd app sync bluecollar-api --namespace argocd
+```
+
 ## 1. Production Topology
 
 Recommended baseline:
