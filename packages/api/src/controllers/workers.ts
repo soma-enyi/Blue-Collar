@@ -194,7 +194,22 @@ export async function createWorker(req: Request<{}, {}, CreateWorkerBody>, res: 
  * PUT /api/workers/:id
  * Update an existing worker listing. Requires `curator` role.
  *
- * @param req - Route param `id`. Body: `UpdateWorkerBody`.
+ * Supports both JSON and multipart/form-data requests:
+ * - JSON: Standard PUT with Content-Type: application/json
+ * - Multipart: POST with X-HTTP-Method: PUT header (method-override pattern)
+ *
+ * The method-override middleware (configured in src/index.ts) checks for the
+ * X-HTTP-Method header and rewrites req.method accordingly. This allows HTML forms
+ * and browsers to send file uploads with PUT semantics, since HTML forms only
+ * support GET and POST methods.
+ *
+ * Example multipart request:
+ *   POST /api/workers/:id
+ *   X-HTTP-Method: PUT
+ *   Content-Type: multipart/form-data
+ *   Authorization: Bearer <token>
+ *
+ * @param req - Route param `id`. Body: `UpdateWorkerBody` (JSON or multipart).
  * @param res - JSON `{ data: Worker, status, code }`.
  */
 export async function updateWorker(req: Request<{ id: string }, {}, UpdateWorkerBody>, res: Response) {

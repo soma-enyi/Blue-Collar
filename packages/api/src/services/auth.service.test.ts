@@ -14,6 +14,12 @@ vi.mock('../db.js', () => ({
       create: vi.fn(),
       update: vi.fn(),
     },
+    refreshToken: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
   },
 }))
 
@@ -83,6 +89,8 @@ function createMockUser(overrides = {}) {
 beforeEach(() => {
   vi.clearAllMocks()
   process.env.JWT_SECRET = 'test-secret'
+  // loginUser creates a refresh token — provide a default mock
+  mockDb.refreshToken.create.mockResolvedValue({ id: 'rt-1' })
 })
 
 afterEach(() => {
@@ -169,7 +177,7 @@ describe('loginUser', () => {
     expect(mockJwt.sign).toHaveBeenCalledWith(
       { id: 'user-1', role: 'user' },
       'test-secret',
-      { expiresIn: '7d' },
+      { expiresIn: '15m' },
     )
   })
 })

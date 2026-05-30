@@ -10,8 +10,14 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      include: ['src/services/**', 'src/utils/**'],
+      include: ['src/services/**', 'src/utils/**', 'src/controllers/**', 'src/middleware/**'],
       exclude: ['src/**/*.test.ts', 'src/**/__tests__/**'],
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 70,
+        statements: 80,
+      },
     },
   },
 })

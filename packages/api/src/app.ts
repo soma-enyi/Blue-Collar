@@ -25,6 +25,7 @@ import { auditMiddleware } from './middleware/audit.js'
 import { sanitize } from './middleware/sanitize.js'
 import { versionMiddleware, deprecationWarning } from './middleware/version.js'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
+import docsRouter from './openapi/docs.js'
 import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -144,6 +145,11 @@ app.get('/metrics/cache', (_req, res) => {
     hitRate: total > 0 ? `${Math.round((cacheMetrics.hits / total) * 100)}%` : '0%',
   })
 })
+
+// Swagger UI — development only
+if (process.env['NODE_ENV'] !== 'production') {
+  app.use('/api', docsRouter)
+}
 
 // 404 handler — must come after all routes
 app.use(notFoundHandler)

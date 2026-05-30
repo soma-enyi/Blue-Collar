@@ -18,6 +18,7 @@
     "seed:staging": "tsx src/database/seed-staging.ts",
     "admin:create": "tsx src/commands/create-admin.ts",
     "db:reset": "tsx src/commands/reset-db.ts",
+    "openapi:generate": "tsx src/scripts/generate-openapi.ts",
     "lint": "eslint \"src/**/*.ts\"",
     "format": "prettier --write \"src/**/*.ts\"",
     "test:mutation": "stryker run",

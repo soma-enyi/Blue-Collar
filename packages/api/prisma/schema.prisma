@@ -42,6 +42,7 @@ model User {
   twoFactorEnabled        Boolean   @default(false)
   twoFactorBackupCodes    String[]  @default([])
   referralCode            String?   @unique
+  onboardingCompleted     Boolean   @default(false)
   locationId              String?
   location                Location? @relation(fields: [locationId], references: [id])
   onboardingCompleted     Boolean   @default(false)
@@ -61,10 +62,11 @@ model User {
   verificationRequests    VerificationRequest[] @relation("VerificationRequests")
   verificationReviews     VerificationRequest[] @relation("VerificationReviews")
   auditLogs               AuditLog[]
-  referralsMade           Referral[]            @relation("ReferralsMade")
-  referralUsed            Referral?             @relation("ReferralUsed")
-  jobs                    Job[]                 @relation("JobsPosted")
-  refreshTokens           RefreshToken[]
+  referralsMade               Referral[]            @relation("ReferralsMade")
+  referralUsed                Referral?             @relation("ReferralUsed")
+  jobs                        Job[]                 @relation("JobsPosted")
+  refreshTokens               RefreshToken[]
+  notificationPreferences     NotificationPreferences?
 }
 
 model Category {

@@ -13,7 +13,7 @@ FEE_BPS       ?= 0
 
 WASM_DIR := target/wasm32-unknown-unknown/release
 
-.PHONY: build build-registry build-market coverage \
+.PHONY: build build-registry build-market coverage fuzz fuzz-register fuzz-tip \
         deploy-testnet deploy-mainnet \
         deploy-registry-testnet deploy-market-testnet \
         deploy-registry-mainnet deploy-market-mainnet \
@@ -35,6 +35,20 @@ coverage:
 	rustup component add llvm-tools-preview
 	cargo install --locked cargo-llvm-cov
 	cargo llvm-cov --workspace --lcov --output-path target/coverage/lcov.info --fail-under-lines 80
+
+# ---------------------------------------------------------------------------
+# Fuzzing
+# ---------------------------------------------------------------------------
+
+fuzz: fuzz-register fuzz-tip
+
+fuzz-register:
+	cargo install --locked cargo-fuzz
+	cargo +nightly fuzz run fuzz_register -- -max_len=1024 -timeout=10
+
+fuzz-tip:
+	cargo install --locked cargo-fuzz
+	cargo +nightly fuzz run fuzz_tip -- -max_len=1024 -timeout=10
 
 # ---------------------------------------------------------------------------
 # Deploy — testnet
